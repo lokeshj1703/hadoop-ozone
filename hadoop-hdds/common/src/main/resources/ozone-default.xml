@@ -254,11 +254,48 @@
   </property>
   <property>
     <name>dfs.ratis.client.request.retry.interval</name>
-    <value>1000ms</value>
+    <value>15000ms</value>
     <tag>OZONE, RATIS, MANAGEMENT</tag>
     <description>Interval between successive retries for a ratis client request.
     </description>
   </property>
+
+  <property>
+    <name>dfs.ratis.client.request.write.timeout</name>
+    <value>5m</value>
+    <tag>OZONE, RATIS, MANAGEMENT</tag>
+    <description>Interval between successive retries for a ratis client request.
+    </description>
+  </property>
+  <property>
+    <name>dfs.ratis.client.request.watch.timeout</name>
+    <value>3m</value>
+    <tag>OZONE, RATIS, MANAGEMENT</tag>
+    <description>Interval between successive retries for a ratis client request.
+    </description>
+  </property>
+  <property>
+    <name>dfs.ratis.client.multilinear.random.retry.policy</name>
+    <value>5s, 5, 10s, 5, 15s, 5, 20s, 5, 25s, 5, 60s, 10</value>
+    <tag>OZONE, RATIS, MANAGEMENT</tag>
+    <description>Interval between successive retries for a ratis client request.
+    </description>
+  </property>
+  <property>
+    <name>dfs.ratis.client.exponential.backoff.base.sleep</name>
+    <value>2s</value>
+    <tag>OZONE, RATIS, MANAGEMENT</tag>
+    <description>Interval between successive retries for a ratis client request.
+    </description>
+  </property>
+  <property>
+    <name>dfs.ratis.client.exponential.backoff.max.sleep</name>
+    <value>40s</value>
+    <tag>OZONE, RATIS, MANAGEMENT</tag>
+    <description>Interval between successive retries for a ratis client request.
+    </description>
+  </property>
+
   <property>
     <name>dfs.ratis.server.retry-cache.timeout.duration</name>
     <value>600000ms</value>

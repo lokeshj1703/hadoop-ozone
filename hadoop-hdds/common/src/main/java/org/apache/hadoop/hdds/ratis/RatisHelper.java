@@ -38,17 +38,15 @@ import org.apache.hadoop.ozone.OzoneConfigKeys;
 import org.apache.ratis.RaftConfigKeys;
 import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.client.RaftClientConfigKeys;
+import org.apache.ratis.client.retry.RequestTypeDependentRetryPolicy;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.grpc.GrpcConfigKeys;
 import org.apache.ratis.grpc.GrpcFactory;
 import org.apache.ratis.grpc.GrpcTlsConfig;
 import org.apache.ratis.proto.RaftProtos;
-import org.apache.ratis.protocol.RaftGroup;
-import org.apache.ratis.protocol.RaftGroupId;
-import org.apache.ratis.protocol.RaftPeer;
-import org.apache.ratis.protocol.RaftPeerId;
-import org.apache.ratis.retry.RetryPolicies;
-import org.apache.ratis.retry.RetryPolicy;
+import org.apache.ratis.protocol.*;
+import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
+import org.apache.ratis.retry.*;
 import org.apache.ratis.rpc.RpcType;
 import org.apache.ratis.rpc.SupportedRpcType;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
@@ -270,19 +268,71 @@ public interface RatisHelper {
   }
 
   static RetryPolicy createRetryPolicy(ConfigurationSource conf) {
-    int maxRetryCount =
-        conf.getInt(OzoneConfigKeys.DFS_RATIS_CLIENT_REQUEST_MAX_RETRIES_KEY,
-            OzoneConfigKeys.
-                DFS_RATIS_CLIENT_REQUEST_MAX_RETRIES_DEFAULT);
-    long retryInterval = conf.getTimeDuration(OzoneConfigKeys.
-        DFS_RATIS_CLIENT_REQUEST_RETRY_INTERVAL_KEY, OzoneConfigKeys.
-        DFS_RATIS_CLIENT_REQUEST_RETRY_INTERVAL_DEFAULT
+    long exponentialBaseSleep = conf.getTimeDuration(
+        OzoneConfigKeys.DFS_RATIS_CLIENT_EXPONENTIAL_BACKOFF_BASE_SLEEP,
+        OzoneConfigKeys.DFS_RATIS_CLIENT_EXPONENTIAL_BACKOFF_BASE_SLEEP_DEFAULT
         .toIntExact(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS);
-    TimeDuration sleepDuration =
-        TimeDuration.valueOf(retryInterval, TimeUnit.MILLISECONDS);
-    RetryPolicy retryPolicy = RetryPolicies
-        .retryUpToMaximumCountWithFixedSleep(maxRetryCount, sleepDuration);
-    return retryPolicy;
+    long exponentialMaxSleep = conf.getTimeDuration(
+        OzoneConfigKeys.DFS_RATIS_CLIENT_EXPONENTIAL_BACKOFF_MAX_SLEEP,
+        OzoneConfigKeys.
+            DFS_RATIS_CLIENT_EXPONENTIAL_BACKOFF_MAX_SLEEP_DEFAULT
+            .toIntExact(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS);
+    ExponentialBackoffRetry exponentialBackoffRetry =
+        ExponentialBackoffRetry.newBuilder().setBaseSleepTime(
+            TimeDuration.valueOf(exponentialBaseSleep, TimeUnit.MILLISECONDS))
+            .setMaxSleepTime(TimeDuration.valueOf(exponentialMaxSleep, TimeUnit.MILLISECONDS))
+            .build();
+
+    MultipleLinearRandomRetry multipleLinearRandomRetry =
+        MultipleLinearRandomRetry.parseCommaSeparated(conf.get(
+            OzoneConfigKeys.DFS_RATIS_CLIENT_MULTILINEAR_RANDOM_RETRY_POLICY,
+            OzoneConfigKeys.DFS_RATIS_CLIENT_MULTILINEAR_RANDOM_RETRY_POLICY_DEFAULT));
+
+    ExceptionDependentRetry.Builder exceptionDependentBuilder =
+        ExceptionDependentRetry.newBuilder()
+            .setExceptionToPolicy(NotReplicatedException.class,
+                RetryPolicies.noRetry())
+            .setExceptionToPolicy(GroupMismatchException.class,
+                RetryPolicies.noRetry())
+            .setExceptionToPolicy(StateMachineException.class,
+                RetryPolicies.noRetry())
+            .setExceptionToPolicy(ResourceUnavailableException.class,
+                exponentialBackoffRetry)
+            .setDefaultPolicy(multipleLinearRandomRetry);
+
+    ExceptionDependentRetry.Builder exceptionDependentBuilder2 =
+        ExceptionDependentRetry.newBuilder()
+            .setExceptionToPolicy(NotReplicatedException.class,
+                RetryPolicies.noRetry())
+            .setExceptionToPolicy(GroupMismatchException.class,
+                RetryPolicies.noRetry())
+            .setExceptionToPolicy(StateMachineException.class,
+                RetryPolicies.noRetry())
+            .setExceptionToPolicy(ResourceUnavailableException.class,
+                exponentialBackoffRetry)
+            .setDefaultPolicy(multipleLinearRandomRetry);
+
+    long writeTimeout = conf.getTimeDuration(
+        OzoneConfigKeys.DFS_RATIS_CLIENT_REQUEST_WRITE_TIMEOUT, OzoneConfigKeys.
+            DFS_RATIS_CLIENT_REQUEST_WRITE_TIMEOUT_DEFAULT
+            .toIntExact(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS);
+    long watchTimeout = conf.getTimeDuration(
+        OzoneConfigKeys.DFS_RATIS_CLIENT_REQUEST_WATCH_TIMEOUT, OzoneConfigKeys.
+            DFS_RATIS_CLIENT_REQUEST_WATCH_TIMEOUT_DEFAULT
+            .toIntExact(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS);
+    return RequestTypeDependentRetryPolicy.newBuilder()
+        .setRetryPolicy(RaftProtos.RaftClientRequestProto.TypeCase.WRITE,
+            exceptionDependentBuilder
+                .setExceptionToPolicy(TimeoutIOException.class,
+                    exponentialBackoffRetry).build())
+        .setRetryPolicy(RaftProtos.RaftClientRequestProto.TypeCase.WATCH,
+            exceptionDependentBuilder2
+                .setExceptionToPolicy(TimeoutIOException.class, RetryPolicies.noRetry()).build())
+        .setTimeout(RaftProtos.RaftClientRequestProto.TypeCase.WRITE,
+            TimeDuration.valueOf(writeTimeout, TimeUnit.MILLISECONDS))
+        .setTimeout(RaftProtos.RaftClientRequestProto.TypeCase.WATCH,
+            TimeDuration.valueOf(watchTimeout, TimeUnit.MILLISECONDS))
+        .build();
   }
 
   static Long getMinReplicatedIndex(
