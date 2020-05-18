@@ -30,11 +30,11 @@ mvn dependency:tree
 [INFO] Scanning for projects...
 [INFO] 
 [INFO] -------< org.apache.hadoop:hadoop-hdds-hadoop-dependency-client >-------
-[INFO] Building Apache Hadoop HDDS Hadoop Client dependencies 0.6.0-SNAPSHOT
+[INFO] Building Apache Hadoop HDDS Hadoop Client dependencies 0.5.0.7.1.1.0-532
 [INFO] --------------------------------[ jar ]---------------------------------
 [INFO] 
 [INFO] --- maven-dependency-plugin:3.0.2:tree (default-cli) @ hadoop-hdds-hadoop-dependency-client ---
-[INFO] org.apache.hadoop:hadoop-hdds-hadoop-dependency-client:jar:0.6.0-SNAPSHOT
+[INFO] org.apache.hadoop:hadoop-hdds-hadoop-dependency-client:jar:0.5.0.7.1.1.0-532
 [INFO] +- org.apache.hadoop:hadoop-annotations:jar:3.2.0:compile
 [INFO] |  \- jdk.tools:jdk.tools:jar:1.8:system
 [INFO] +- org.apache.hadoop:hadoop-common:jar:3.2.0:compile
