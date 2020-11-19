@@ -50,6 +50,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.slf4j.event.Level;
 
 import java.io.File;
 import java.io.IOException;
@@ -88,6 +89,7 @@ public class TestDeletedBlockLog {
 
   @Before
   public void setup() throws Exception {
+    GenericTestUtils.setLogLevel(DeletedBlockLogImpl.LOG, Level.DEBUG);
     testDir = GenericTestUtils.getTestDir(
         TestDeletedBlockLog.class.getSimpleName());
     conf = new OzoneConfiguration();

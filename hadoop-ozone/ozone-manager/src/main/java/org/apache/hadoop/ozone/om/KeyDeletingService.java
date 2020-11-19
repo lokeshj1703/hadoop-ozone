@@ -17,10 +17,7 @@
 package org.apache.hadoop.ozone.om;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -161,6 +158,7 @@ public class KeyDeletingService extends BackgroundService {
           List<BlockGroup> keyBlocksList = manager
               .getPendingDeletionKeys(keyLimitPerTask);
           if (keyBlocksList != null && !keyBlocksList.isEmpty()) {
+            LOG.info("Deleting "+ Arrays.toString(keyBlocksList.toArray()));
             List<DeleteBlockGroupResult> results =
                 scmClient.deleteKeyBlocks(keyBlocksList);
             if (results != null) {
@@ -173,7 +171,7 @@ public class KeyDeletingService extends BackgroundService {
                 //  OMRequest model.
                 delCount = deleteAllKeys(results);
               }
-              LOG.debug("Number of keys deleted: {}, elapsed time: {}ms",
+              LOG.info("Number of keys deleted: {}, elapsed time: {}ms",
                   delCount, Time.monotonicNow() - startTime);
               deletedKeyCount.addAndGet(delCount);
             }

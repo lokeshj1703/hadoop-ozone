@@ -31,7 +31,10 @@ import org.apache.hadoop.hdds.utils.db.BatchOperation;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.container.common.impl.ChunkLayOutVersion;
 import org.apache.hadoop.ozone.container.common.impl.ContainerData;
+import org.apache.hadoop.ozone.container.common.impl.TopNOrderedContainerDeletionChoosingPolicy;
 import org.apache.hadoop.ozone.container.common.utils.ReferenceCountedDB;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.nodes.Tag;
 
 
@@ -56,6 +59,10 @@ import static org.apache.hadoop.ozone.OzoneConsts.PENDING_DELETE_BLOCK_COUNT;
  * by the .container file.
  */
 public class KeyValueContainerData extends ContainerData {
+
+  private static final Logger LOG =
+      LoggerFactory.getLogger(KeyValueContainerData.class);
+
 
   // Yaml Tag used for KeyValueContainerData.
   public static final Tag KEYVALUE_YAML_TAG = new Tag("KeyValueContainerData");
@@ -208,6 +215,7 @@ public class KeyValueContainerData extends ContainerData {
    * @param numBlocks increment number
    */
   public void incrPendingDeletionBlocks(long numBlocks) {
+    //LOG.info("LOKI increment pending blocks {} {} for {}", numBlocks, numPendingDeletionBlocks.get(), getContainerID());
     this.numPendingDeletionBlocks.addAndGet(numBlocks);
   }
 
@@ -217,6 +225,7 @@ public class KeyValueContainerData extends ContainerData {
    * @param numBlocks decrement number
    */
   public void decrPendingDeletionBlocks(long numBlocks) {
+    LOG.info("LOKI decrement pending blocks {} {} for {}", numBlocks, numPendingDeletionBlocks.get(), getContainerID());
     this.numPendingDeletionBlocks.addAndGet(-1 * numBlocks);
   }
 

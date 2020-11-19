@@ -35,10 +35,7 @@ import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolPro
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.ContainerBlocksDeletionACKProto.DeleteBlockTransactionResult;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.DeletedBlocksTransaction;
 import org.apache.hadoop.hdds.scm.command.CommandStatusReportHandler.DeleteBlockStatus;
-import org.apache.hadoop.hdds.scm.container.ContainerID;
-import org.apache.hadoop.hdds.scm.container.ContainerInfo;
-import org.apache.hadoop.hdds.scm.container.ContainerManager;
-import org.apache.hadoop.hdds.scm.container.ContainerReplica;
+import org.apache.hadoop.hdds.scm.container.*;
 import org.apache.hadoop.hdds.scm.metadata.SCMMetadataStore;
 import org.apache.hadoop.hdds.server.events.EventHandler;
 import org.apache.hadoop.hdds.server.events.EventPublisher;
@@ -325,20 +322,17 @@ public class DeletedBlockLogImpl
   private void getTransaction(DeletedBlocksTransaction tx,
       DatanodeDeletedBlockTransactions transactions) {
     try {
-      final ContainerID id = ContainerID.valueof(tx.getContainerID());
-      if (!containerManager.getContainer(id).isOpen()) {
-        Set<ContainerReplica> replicas = containerManager
-            .getContainerReplicas(ContainerID.valueof(tx.getContainerID()));
-        for (ContainerReplica replica : replicas) {
-          UUID dnID = replica.getDatanodeDetails().getUuid();
-          Set<UUID> dnsWithTransactionCommitted =
-              transactionToDNsCommitMap.get(tx.getTxID());
-          if (dnsWithTransactionCommitted == null
-              || !dnsWithTransactionCommitted.contains(dnID)) {
-            // Transaction need not be sent to dns which have
-            // already committed it
-            transactions.addTransactionToDN(dnID, tx);
-          }
+      Set<ContainerReplica> replicas = containerManager
+          .getContainerReplicas(ContainerID.valueof(tx.getContainerID()));
+      for (ContainerReplica replica : replicas) {
+        UUID dnID = replica.getDatanodeDetails().getUuid();
+        Set<UUID> dnsWithTransactionCommitted =
+            transactionToDNsCommitMap.get(tx.getTxID());
+        if (dnsWithTransactionCommitted == null || !dnsWithTransactionCommitted
+            .contains(dnID)) {
+          // Transaction need not be sent to dns which have
+          // already committed it
+          transactions.addTransactionToDN(dnID, tx);
         }
       }
     } catch (IOException e) {
@@ -357,15 +351,27 @@ public class DeletedBlockLogImpl
           ? extends Table.KeyValue<Long, DeletedBlocksTransaction>> iter =
                scmMetadataStore.getDeletedBlocksTXTable().iterator()) {
         int numBlocksAdded = 0;
+        LOG.debug("LOKI Limit {}", blockDeletionLimit);
         while (iter.hasNext() && numBlocksAdded < blockDeletionLimit) {
           Table.KeyValue<Long, DeletedBlocksTransaction> keyValue =
               iter.next();
           DeletedBlocksTransaction txn = keyValue.getValue();
-          if (txn.getCount() > -1 && txn.getCount() <= maxRetry) {
-            numBlocksAdded += txn.getLocalIDCount();
-            getTransaction(txn, transactions);
-            transactionToDNsCommitMap
-                .putIfAbsent(txn.getTxID(), new LinkedHashSet<>());
+          try {
+            final ContainerID id = ContainerID.valueof(txn.getContainerID());
+            if (txn.getCount() > -1 && txn.getCount() <= maxRetry
+                && !containerManager.getContainer(id).isOpen()) {
+              LOG.debug("LOKI TXN: {} BlocksAdded: {} numBlocksAdded: {}",
+                  txn.getTxID(), txn.getLocalIDCount(), numBlocksAdded);
+              numBlocksAdded += txn.getLocalIDCount();
+              getTransaction(txn, transactions);
+              transactionToDNsCommitMap
+                  .putIfAbsent(txn.getTxID(), new LinkedHashSet<>());
+            } else {
+              LOG.debug("LOKI TXN: {} Count: {}", txn.getTxID(), txn.getCount());
+            }
+          } catch (ContainerNotFoundException e) {
+            //ignore
+            //TODO: purge such transactions from the log (maybe a duplicate transaction)
           }
         }
       }

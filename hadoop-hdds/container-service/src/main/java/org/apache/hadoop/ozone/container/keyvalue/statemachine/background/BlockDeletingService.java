@@ -127,11 +127,9 @@ public class BlockDeletingService extends BackgroundService {
       // configured.
       containers = chooseContainerForBlockDeletion(containerLimitPerInterval,
               containerDeletionPolicy);
-      if (containers.size() > 0) {
-        LOG.info("Plan to choose {} containers for block deletion, "
-                + "actually returns {} valid containers.",
-            containerLimitPerInterval, containers.size());
-      }
+      LOG.info("Plan to choose {} containers for block deletion, "
+              + "actually returns {} valid containers.",
+          containerLimitPerInterval, containers.size());
 
       for(ContainerData container : containers) {
         BlockDeletingTask containerTask =
@@ -156,8 +154,14 @@ public class BlockDeletingService extends BackgroundService {
       throws StorageContainerException {
     Map<Long, ContainerData> containerDataMap =
         ozoneContainer.getContainerSet().getContainerMap().entrySet().stream()
-            .filter(e -> isDeletionAllowed(e.getValue().getContainerData(),
-                deletionPolicy)).collect(Collectors
+            .filter(e -> {
+              boolean result = isDeletionAllowed(e.getValue().getContainerData(),
+                deletionPolicy);
+              if (!result) {
+                LOG.info("LOKI deletion not allowed for "+e.getValue().getContainerData().getContainerID());
+              }
+              return result;
+            }).collect(Collectors
             .toMap(Map.Entry::getKey, e -> e.getValue().getContainerData()));
     return deletionPolicy
         .chooseContainerForBlockDeletion(count, containerDataMap);

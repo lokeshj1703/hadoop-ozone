@@ -127,6 +127,8 @@ public class DeleteBlocksCommandHandler implements CommandHandler {
           case KeyValueContainer:
             KeyValueContainerData containerData = (KeyValueContainerData)
                 cont.getContainerData();
+            LOG.info("Processing Container : {}, DB path : {}", containerId,
+                containerData.getMetadataPath());
             cont.writeLock();
             try {
               deleteKeyValueContainerBlocks(containerData, entry);
@@ -191,17 +193,11 @@ public class DeleteBlocksCommandHandler implements CommandHandler {
       KeyValueContainerData containerData, DeletedBlocksTransaction delTX)
       throws IOException {
     long containerId = delTX.getContainerID();
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Processing Container : {}, DB path : {}", containerId,
-          containerData.getMetadataPath());
-    }
 
+    LOG.info(String.format("Ignoring delete blocks for containerId: %d."
+            + " Outdated delete transactionId %d  %d", containerId,
+        delTX.getTxID(), containerData.getDeleteTransactionId()));
     if (delTX.getTxID() < containerData.getDeleteTransactionId()) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug(String.format("Ignoring delete blocks for containerId: %d."
-                + " Outdated delete transactionId %d < %d", containerId,
-            delTX.getTxID(), containerData.getDeleteTransactionId()));
-      }
       return;
     }
 
@@ -221,11 +217,9 @@ public class DeleteBlocksCommandHandler implements CommandHandler {
 
           if (blockDataTable.get(deletingKey) != null
               || deletedBlocksTable.get(blk) != null) {
-            if (LOG.isDebugEnabled()) {
-              LOG.debug(String.format(
-                  "Ignoring delete for block %s in container %d."
-                      + " Entry already added.", blk, containerId));
-            }
+            LOG.info(String.format(
+                "Ignoring delete for block %s in container %d."
+                    + " Entry already added.", blk, containerId));
             continue;
           }
 
@@ -238,10 +232,7 @@ public class DeleteBlocksCommandHandler implements CommandHandler {
             containerDB.getStore().getBatchHandler()
                 .commitBatchOperation(batch);
             newDeletionBlocks++;
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Transited Block {} to DELETING state in container {}",
-                  blk, containerId);
-            }
+            LOG.info("Transited Block {} to DELETING state in container {}", blk, containerId);
           } catch (IOException e) {
             // if some blocks failed to delete, we fail this TX,
             // without sending this ACK to SCM, SCM will resend the TX
@@ -250,10 +241,8 @@ public class DeleteBlocksCommandHandler implements CommandHandler {
                 "Failed to delete blocks for TXID = " + delTX.getTxID(), e);
           }
         } else {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Block {} not found or already under deletion in"
-                + " container {}, skip deleting it.", blk, containerId);
-          }
+          LOG.info("Block {} not found or already under deletion in"
+              + " container {}, skip deleting it.", blk, containerId);
         }
       }
 
