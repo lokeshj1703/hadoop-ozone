@@ -190,7 +190,7 @@ public class KeyValueHandler extends Handler {
     case DeleteBlock:
       return handler.handleDeleteBlock(request, kvContainer);
     case ListBlock:
-      return handler.handleUnsupportedOp(request);
+      return handler.listBlock(request, kvContainer);
     case ReadChunk:
       return handler.handleReadChunk(request, kvContainer, dispatcherContext);
     case DeleteChunk:
@@ -1048,6 +1048,30 @@ public class KeyValueHandler extends Handler {
       if (LOG.isDebugEnabled()) {
         LOG.debug("block {} chunk {} deleted", blockData.getBlockID(), info);
       }
+    }
+  }
+
+  @Override
+  protected ContainerCommandResponseProto listBlock(
+      ContainerCommandRequestProto request, KeyValueContainer kvContainer) {
+    kvContainer.readLock();
+    try {
+      ContainerProtos.ListBlockRequestProto lbrp = request.getListBlock();
+      ContainerProtos.ListBlockResponseProto.Builder blockResponseProtoBuilder =
+          ContainerProtos.ListBlockResponseProto.newBuilder();
+      for (BlockData blockData : blockManager
+          .listBlock(kvContainer, lbrp.getStartLocalID(), lbrp.getCount())) {
+        blockResponseProtoBuilder.addBlockData(blockData.getProtoBufMessage());
+      }
+      return ContainerCommandResponseProto.newBuilder(getSuccessResponse(request))
+          .setListBlock(blockResponseProtoBuilder.build())
+          .build();
+    } catch (IOException e) {
+      return ContainerUtils.logAndReturnError(LOG,
+          new StorageContainerException("List Block failed", e, IO_EXCEPTION),
+          request);
+    } finally {
+      kvContainer.readUnlock();
     }
   }
 

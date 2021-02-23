@@ -22,11 +22,10 @@ import java.io.IOException;
 
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.ozone.MiniOzoneCluster;
+import org.apache.hadoop.ozone.container.keyvalue.impl.BlockManagerImpl;
 import org.apache.hadoop.test.GenericTestUtils;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.ratis.server.RaftServer;
-import org.apache.ratis.server.raftlog.RaftLog;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.event.Level;
@@ -47,8 +46,8 @@ public class TestOzoneClientKeyGenerator {
   public void setup() {
     path = GenericTestUtils
         .getTempPath(TestOzoneClientKeyGenerator.class.getSimpleName());
-    GenericTestUtils.setLogLevel(RaftLog.LOG, Level.DEBUG);
-    GenericTestUtils.setLogLevel(RaftServer.LOG, Level.DEBUG);
+    GenericTestUtils.setLogLevel(BlockManagerImpl.LOG, Level.DEBUG);
+    //GenericTestUtils.setLogLevel(RaftServer.LOG, Level.DEBUG);
     File baseDir = new File(path);
     baseDir.mkdirs();
   }
@@ -69,7 +68,7 @@ public class TestOzoneClientKeyGenerator {
       conf = new OzoneConfiguration();
     }
     MiniOzoneCluster cluster = MiniOzoneCluster.newBuilder(conf)
-        .setNumDatanodes(5)
+        .setNumDatanodes(3)
         .build();
 
     cluster.waitForClusterToBeReady();
@@ -87,8 +86,11 @@ public class TestOzoneClientKeyGenerator {
     out.close();
     new Freon().execute(
         new String[] {"-conf", new File(path, "conf").getAbsolutePath(),
-            "ockg", "-t", "1"});
+            "ockg", "-t", "1", "-n", "10"});
+    new Freon().execute(
+        new String[] { "-conf", new File(path, "conf").getAbsolutePath(), "dbl",
+            "-d", cluster.getHddsDatanodes().get(0)
+            .getDatanodeDetails().getUuidString(), "-nc", "10", "-sc", "0"});
     shutdown(cluster);
   }
-
 }

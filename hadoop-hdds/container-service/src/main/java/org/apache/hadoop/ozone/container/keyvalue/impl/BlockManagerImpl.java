@@ -51,7 +51,7 @@ import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Res
  */
 public class BlockManagerImpl implements BlockManager {
 
-  static final Logger LOG = LoggerFactory.getLogger(BlockManagerImpl.class);
+  public static final Logger LOG = LoggerFactory.getLogger(BlockManagerImpl.class);
 
 
   private ConfigurationSource config;
@@ -308,8 +308,8 @@ public class BlockManagerImpl implements BlockManager {
       try (ReferenceCountedDB db = BlockUtils.getDB(cData, config)) {
         result = new ArrayList<>();
         List<? extends Table.KeyValue<String, BlockData>> range =
-            db.getStore().getBlockDataTable()
-            .getSequentialRangeKVs(Long.toString(startLocalID), count,
+            db.getStore().getBlockDataTable().getSequentialRangeKVs(
+                startLocalID > 0 ? Long.toString(startLocalID) : null, count,
                 MetadataKeyFilters.getUnprefixedKeyFilter());
         for (Table.KeyValue<String, BlockData> entry: range) {
           BlockData data = new BlockData(entry.getValue().getBlockID());

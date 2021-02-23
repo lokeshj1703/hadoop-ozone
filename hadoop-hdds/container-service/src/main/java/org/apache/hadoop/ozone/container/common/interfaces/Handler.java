@@ -35,6 +35,7 @@ import org.apache.hadoop.ozone.container.common.impl.ContainerData;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
 import org.apache.hadoop.ozone.container.common.transport.server.ratis.DispatcherContext;
 import org.apache.hadoop.ozone.container.common.volume.VolumeSet;
+import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainer;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueHandler;
 import org.apache.hadoop.ozone.container.keyvalue.TarContainerPacker;
 
@@ -190,4 +191,7 @@ public abstract class Handler {
     this.scmID = scmId;
   }
 
+  protected abstract ContainerCommandResponseProto listBlock(
+      ContainerCommandRequestProto request, KeyValueContainer kvContainer)
+      throws IOException;
 }

@@ -50,6 +50,7 @@ import picocli.CommandLine.Option;
         DatanodeChunkGenerator.class,
         DatanodeChunkValidator.class,
         DatanodeBlockPutter.class,
+        ListBlock.class,
         FollowerAppendLogEntryGenerator.class,
         ChunkManagerDiskWrite.class,
         LeaderAppendLogEntryGenerator.class,
