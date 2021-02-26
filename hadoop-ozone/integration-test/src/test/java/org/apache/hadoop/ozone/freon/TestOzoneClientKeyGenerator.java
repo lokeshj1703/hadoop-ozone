@@ -90,7 +90,7 @@ public class TestOzoneClientKeyGenerator {
     new Freon().execute(
         new String[] { "-conf", new File(path, "conf").getAbsolutePath(), "dbl",
             "-d", cluster.getHddsDatanodes().get(0)
-            .getDatanodeDetails().getUuidString(), "-nc", "10", "-sc", "0"});
+            .getDatanodeDetails().getUuidString(), "-nc", "2", "-sc", "0", "-nb", "2"});
     shutdown(cluster);
   }
 }

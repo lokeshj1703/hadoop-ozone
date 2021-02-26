@@ -1059,6 +1059,7 @@ public class KeyValueHandler extends Handler {
       ContainerProtos.ListBlockRequestProto lbrp = request.getListBlock();
       ContainerProtos.ListBlockResponseProto.Builder blockResponseProtoBuilder =
           ContainerProtos.ListBlockResponseProto.newBuilder();
+      LOG.info("List Block for {}", kvContainer.getContainerData().getContainerID());
       for (BlockData blockData : blockManager
           .listBlock(kvContainer, lbrp.getStartLocalID(), lbrp.getCount())) {
         blockResponseProtoBuilder.addBlockData(blockData.getProtoBufMessage());

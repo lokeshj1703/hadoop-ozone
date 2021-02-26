@@ -103,12 +103,22 @@ public class ListBlock  extends BaseFreonGenerator
               ozoneConf)) {
         List<ContainerInfo> containers =
             scmLocationClient.listContainer(startContainerId, startContainerId + containersPerCall);
+        LOG.info("{}", String.format("Received %d containers from SCM", containers.size()));
+        System.out.println(String.format("Received %d containers from SCM", containers.size()));
         if (containers.isEmpty()) {
+          LOG.info("No more containers found, totally listed " + containersListed);
           System.out.println("No more containers found, totally listed " + containersListed);
           break;
         }
         for (ContainerInfo containerInfo : containers) {
-          ContainerWithPipeline containerWithPipeline = scmLocationClient.getContainerWithPipeline(containerInfo.getContainerID());
+          ContainerWithPipeline containerWithPipeline = scmLocationClient
+              .getContainerWithPipeline(containerInfo.getContainerID());
+          LOG.info("{}", String
+              .format("Received pipeline info %s for container %s",
+                  containerWithPipeline, containerInfo));
+          System.out.println(String
+              .format("Received pipeline info %s for container %s",
+                  containerWithPipeline, containerInfo));
           for (DatanodeDetails datanodeDetails : containerWithPipeline
               .getPipeline().getNodes()) {
             if (datanodeId.equals(datanodeDetails.getUuid().toString())) {
@@ -116,6 +126,9 @@ public class ListBlock  extends BaseFreonGenerator
               listBlocks(containerWithPipeline, datanodeDetails, ozoneConf);
               break;
             }
+          }
+          if (containersListed == numContainers) {
+            break;
           }
         }
         startContainerId += containersPerCall;
@@ -151,6 +164,9 @@ public class ListBlock  extends BaseFreonGenerator
       ContainerProtos.ListBlockResponseProto listBlockResponseProto =
           xceiverClientSpi.sendCommand(ccrp).getListBlock();
       for (ContainerProtos.BlockData blockData : listBlockResponseProto.getBlockDataList()) {
+        LOG.info("{}", String.format("Block %s:%s chunksCount:%s",
+            blockData.getBlockID().getContainerID(),
+            blockData.getBlockID().getLocalID(), blockData.getChunksCount()));
         System.out.println(String.format("Block %s:%s chunksCount:%s",
             blockData.getBlockID().getContainerID(),
             blockData.getBlockID().getLocalID(), blockData.getChunksCount()));
